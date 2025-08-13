@@ -72,5 +72,40 @@ def adoptar():
     return render_template('adoptar.html')
 
 
+# Editar mascota
+@app.route('/editar/<int:id>', methods=['GET', 'POST'])
+def editar(id):
+    conn = connect_db()
+    cur = conn.cursor() 
+
+    if request.method == 'POST':
+        nombre = request.form['nombre']
+        especie = request.form['especie']
+        edad = request.form['edad']
+        ciudad = request.form['ciudad']
+        descripcion = request.form['descripcion']
+        imagen = request.form['imagen']
+
+        cur.execute("""
+            UPDATE mascotas 
+            SET nombre=%s, especie=%s, edad=%s, ciudad=%s, descripcion=%s, imagen=%s
+            WHERE id=%s
+        """, (nombre, especie, edad, ciudad, descripcion, imagen, id))
+        conn.commit()
+        cur.close()
+        conn.close()
+        flash('Mascota actualizada correctamente', 'success')
+        return redirect(url_for('index'))
+
+    # Si es GET, obtener datos
+    cur.execute("SELECT * FROM mascotas WHERE id=%s", (id,))
+    mascota = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    return render_template('editar.html', mascota=mascota)
+
+
+
 if __name__ == '__main__':
     app.run(debug=True)
