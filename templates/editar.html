@@ -11,7 +11,8 @@
     <div class="container">
         <h1 class="mb-4 text-center">Editar Mascota</h1>
 
-        <form method="POST" action="{{ url_for('editar', id=mascota['id']) }}" class="card p-4 shadow-sm">
+        <!-- Importante: enctype para subir archivos -->
+        <form method="POST" action="{{ url_for('editar', id=mascota['id']) }}" enctype="multipart/form-data" class="card p-4 shadow-sm">
 
             <div class="mb-3">
                 <label class="form-label">Nombre:</label>
@@ -38,15 +39,36 @@
                 <textarea class="form-control" name="descripcion" rows="3">{{ mascota['descripcion'] }}</textarea>
             </div>
 
+            <!-- Mostrar imagen actual -->
+            <div class="mb-3 text-center">
+                <p><strong>Imagen actual:</strong></p>
+                {% if mascota['imagen'] %}
+                    <img src="{{ url_for('static', filename=mascota['imagen']) }}" alt="Imagen de la mascota" class="img-thumbnail" style="max-width: 200px;">
+                {% else %}
+                    <p>No hay imagen registrada.</p>
+                {% endif %}
+            </div>
+
+            <!-- Subir nueva imagen -->
             <div class="mb-3">
-                <label class="form-label">Imagen (ruta):</label>
-                <input type="text" class="form-control" name="imagen" value="{{ mascota['imagen'] }}">
+                <label class="form-label">Subir nueva imagen (opcional):</label>
+                <input type="file" class="form-control" name="imagen">
+                <!-- Guardar ruta actual en un hidden si no se sube nueva -->
+                <input type="hidden" name="imagen_actual" value="{{ mascota['imagen'] }}">
             </div>
 
             <div class="d-flex justify-content-between">
                 <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancelar</a>
                 <button type="submit" class="btn btn-success">Actualizar</button>
             </div>
+        </form>
+    </div>
+
+    <br>
+    <!-- Botón eliminar -->
+    <div class="container delete-section text-center">
+        <form action="{{ url_for('eliminar', id=mascota['id']) }}" method="post" style="display:inline-block;">
+            <button type="submit" class="btn btn-danger">✖️ Eliminar</button>
         </form>
     </div>
 

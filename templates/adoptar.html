@@ -8,9 +8,10 @@
 href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
      <style>
 
-        body {
+      body {
             font-family: Arial, sans-serif;
-            background-color: #f1f1f1;
+            background: url("https://cdn.pixabay.com/photo/2017/02/20/18/03/cat-2083492_1280.jpg") no-repeat center center fixed;
+            background-size: cover;
             padding: 20px;
         }
         .formulario {
@@ -33,25 +34,32 @@ href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" r
             padding: 10px;
             margin-top: 5px;
         }
+        h1{
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: bold;
+            types: italic;
+        }
         button {
             margin-top: 20px;
             width: 100%;
             padding: 10px;
-            background-color: #4CAF50;
+            background-color: #ff7f50;
             border: none;
             color: white;
             font-size: 16px;
             border-radius: 5px;
         }
         button:hover {
-            background-color: #45a049;
+            background-color: #ff5722;
         }
     </style>
 
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <a class="navbar-brand" href="{{ url_for('inicio') }}">Inicio</a>
-        <a class="navbar-brand" href="{{ url_for('index') }}">Formulario</a>
-        <a class="navbar-brand" href="{{ url_for('adoptar') }}">Registro de datos</a>
+        <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}">🏠Inicio</a>
+        <a class="navbar-brand fw-bold" href="{{ url_for('index') }}">🧾Formulario</a>
+        <a class="navbar-brand fw-bold" href="{{ url_for('adoptar') }}">📒Registro de datos</a>
 
     </nav>
 
@@ -63,7 +71,7 @@ href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" r
 
 <div class="formulario">
     <h2>Formulario de Adopción</h2>
-        <form method="POST">
+        <form action="{{url_for('adoptar')}}" method="POST" enctype="multipart/form-data">
     <label>Nombre:</label>
     <input type="text" name="nombre" required><br>
 
@@ -80,7 +88,7 @@ href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" r
     <input type="text" name="descripcion" required><br>
 
     <label>Imagen:</label>
-    <textarea name="imagen" required></textarea><br>
+    <input type="file" name="imagen" required></textarea><br>
 
 
 
