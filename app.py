@@ -59,14 +59,15 @@ def adoptar():
         descripcion = request.form.get('descripcion')
         imagen = request.form.get('imagen')
 
-        # Manejo de imagen
         file = request.files.get('imagen')
-        imagen_path = None
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
-            imagen_path = f"uploads/{filename}"  # Guardar ruta relativa a static/
+            imagen = f"uploads/{filename}"
+        else:
+            imagen = request.form.get('imagen_actual')  # Mantener la imagen si no se sube nueva
+
 
         # Si algún campo es vacío, lo puedes manejar aquí o permitir NULL en la base datos
         if not edad:
