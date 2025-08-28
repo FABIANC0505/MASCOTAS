@@ -92,8 +92,6 @@ def adoptar():
     return render_template('adoptar.html')
 
 @app.route
-
-
 # Editar mascota
 @app.route('/editar/<int:id>', methods=['GET', 'POST'])
 def editar(id):
