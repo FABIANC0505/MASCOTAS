@@ -1,13 +1,12 @@
 # ==========================================================
 # app.py
-# PROYECTO COMPLETO FLASK + MYSQL + KAFKA + .ENV
+# API REST FLASK + MYSQL CLOUD (AIVEN)
 # ==========================================================
 
-from flask import Flask, request, render_template, flash, url_for, redirect
+from flask import Flask, request, jsonify
 import pymysql
-from werkzeug.utils import secure_filename
-from confluent_kafka import Producer
 from dotenv import load_dotenv
+from werkzeug.utils import secure_filename
 import os
 
 # ==========================================================
@@ -21,7 +20,6 @@ load_dotenv()
 # ==========================================================
 
 app = Flask(__name__)
-app.secret_key = 'secretkey'
 
 upload_folder = 'static/uploads/'
 allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
@@ -29,44 +27,36 @@ allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
 app.config['UPLOAD_FOLDER'] = upload_folder
 
 # ==========================================================
-# CONFIGURACIÓN KAFKA
-# ==========================================================
-
-kafka_conf = {
-    'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS'),
-
-    'security.protocol': os.getenv('KAFKA_SECURITY_PROTOCOL'),
-
-    'ssl.ca.location': os.getenv('KAFKA_CA_LOCATION'),
-
-    'ssl.certificate.location': os.getenv('KAFKA_CERT_LOCATION'),
-
-    'ssl.key.location': os.getenv('KAFKA_KEY_LOCATION'),
-
-    'client.id': 'adopta-app'
-}
-
-producer = Producer(kafka_conf)
-
-# ==========================================================
-# CONEXIÓN MYSQL
+# CONEXIÓN MYSQL CLOUD
 # ==========================================================
 
 def connect_db():
+
     return pymysql.connect(
-        host='localhost',
-        user='root',
-        password='',
-        database='adopta',
-        cursorclass=pymysql.cursors.DictCursor,
-        ssl_disabled=True
+
+        host=os.getenv('MYSQL_HOST'),
+
+        user=os.getenv('MYSQL_USER'),
+
+        password=os.getenv('MYSQL_PASSWORD'),
+
+        database=os.getenv('MYSQL_DATABASE'),
+
+        port=int(os.getenv('MYSQL_PORT')),
+
+        ssl={
+            'ca': os.getenv('MYSQL_SSL_CA')
+        },
+
+        cursorclass=pymysql.cursors.DictCursor
     )
 
 # ==========================================================
-# VALIDAR EXTENSIONES DE IMÁGENES
+# VALIDAR IMÁGENES
 # ==========================================================
 
 def allowed_file(filename):
+
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
@@ -76,40 +66,92 @@ def allowed_file(filename):
 
 @app.route('/')
 def inicio():
-    return render_template('base.html')
+
+    return jsonify({
+        'mensaje': 'API REST de adopción funcionando correctamente'
+    })
 
 # ==========================================================
-# MOSTRAR MASCOTAS
+# OBTENER TODAS LAS MASCOTAS
 # ==========================================================
 
-@app.route('/mascotas')
-def index():
+@app.route('/mascotas', methods=['GET'])
+def obtener_mascotas():
+
     try:
+
         conn = connect_db()
         cur = conn.cursor()
 
         cur.execute("SELECT * FROM mascotas")
 
-        data = cur.fetchall()
+        mascotas = cur.fetchall()
 
         cur.close()
         conn.close()
 
-        return render_template('index.html', mascotas=data)
+        return jsonify({
+            'success': True,
+            'total': len(mascotas),
+            'data': mascotas
+        })
 
     except Exception as e:
-        flash(f"Error al conectar a la base de datos: {e}")
 
-        return render_template('index.html', mascotas=[])
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
+# ==========================================================
+# OBTENER UNA MASCOTA POR ID
+# ==========================================================
+
+@app.route('/mascotas/<int:id>', methods=['GET'])
+def obtener_mascota(id):
+
+    try:
+
+        conn = connect_db()
+        cur = conn.cursor()
+
+        cur.execute(
+            "SELECT * FROM mascotas WHERE id=%s",
+            (id,)
+        )
+
+        mascota = cur.fetchone()
+
+        cur.close()
+        conn.close()
+
+        if mascota:
+
+            return jsonify({
+                'success': True,
+                'data': mascota
+            })
+
+        return jsonify({
+            'success': False,
+            'mensaje': 'Mascota no encontrada'
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
 
 # ==========================================================
 # REGISTRAR MASCOTA
 # ==========================================================
 
-@app.route('/adoptar', methods=['GET', 'POST'])
-def adoptar():
+@app.route('/mascotas', methods=['POST'])
+def registrar_mascota():
 
-    if request.method == 'POST':
+    try:
 
         nombre = request.form.get('nombre')
         especie = request.form.get('especie')
@@ -139,115 +181,60 @@ def adoptar():
             imagen = f"uploads/{filename}"
 
         # ==================================================
-        # VALIDAR EDAD
+        # INSERT MYSQL
         # ==================================================
 
-        if not edad:
-            edad = None
+        conn = connect_db()
+        cur = conn.cursor()
 
-        # ==================================================
-        # INSERTAR EN MYSQL
-        # ==================================================
+        sql = """
+            INSERT INTO mascotas
+            (nombre, especie, edad, ciudad, descripcion, imagen)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """
 
-        connection = connect_db()
+        cur.execute(sql, (
+            nombre,
+            especie,
+            edad,
+            ciudad,
+            descripcion,
+            imagen
+        ))
 
-        try:
+        conn.commit()
 
-            with connection.cursor() as cursor:
+        nuevo_id = cur.lastrowid
 
-                sql = """
-                    INSERT INTO mascotas
-                    (nombre, especie, edad, ciudad, descripcion, imagen)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                """
+        cur.close()
+        conn.close()
 
-                cursor.execute(sql, (
-                    nombre,
-                    especie,
-                    edad,
-                    ciudad,
-                    descripcion,
-                    imagen
-                ))
+        return jsonify({
+            'success': True,
+            'mensaje': 'Mascota registrada correctamente',
+            'id': nuevo_id
+        })
 
-            connection.commit()
+    except Exception as e:
 
-            # ==============================================
-            # ENVIAR EVENTO A KAFKA
-            # ==============================================
-
-            mensaje = f"""
-            Nueva mascota registrada:
-            Nombre: {nombre}
-            Especie: {especie}
-            Ciudad: {ciudad}
-            """
-
-            producer.produce(
-                'mascotas',
-                value=mensaje
-            )
-
-            producer.flush()
-
-            flash('Mascota registrada correctamente.')
-
-            return redirect(url_for('index'))
-
-        except Exception as e:
-
-            flash(f"Error al registrar mascota: {e}")
-
-        finally:
-
-            connection.close()
-
-    return render_template('adoptar.html')
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
 
 # ==========================================================
-# EDITAR MASCOTA
+# ACTUALIZAR MASCOTA
 # ==========================================================
 
-@app.route('/editar/<int:id>', methods=['GET', 'POST'])
-def editar(id):
+@app.route('/mascotas/<int:id>', methods=['PUT'])
+def actualizar_mascota(id):
 
-    conn = connect_db()
-    cur = conn.cursor()
+    try:
 
-    if request.method == 'POST':
+        data = request.json
 
-        nombre = request.form['nombre']
-        especie = request.form['especie']
-        edad = request.form['edad']
-        ciudad = request.form['ciudad']
-        descripcion = request.form['descripcion']
-
-        file = request.files.get('imagen')
-
-        # ==================================================
-        # ACTUALIZAR IMAGEN
-        # ==================================================
-
-        if file and allowed_file(file.filename):
-
-            filename = secure_filename(file.filename)
-
-            filepath = os.path.join(
-                app.config['UPLOAD_FOLDER'],
-                filename
-            )
-
-            file.save(filepath)
-
-            imagen = f"uploads/{filename}"
-
-        else:
-
-            imagen = request.form.get('imagen_actual')
-
-        # ==================================================
-        # UPDATE MYSQL
-        # ==================================================
+        conn = connect_db()
+        cur = conn.cursor()
 
         cur.execute("""
             UPDATE mascotas
@@ -255,64 +242,40 @@ def editar(id):
                 especie=%s,
                 edad=%s,
                 ciudad=%s,
-                descripcion=%s,
-                imagen=%s
+                descripcion=%s
             WHERE id=%s
         """, (
-            nombre,
-            especie,
-            edad,
-            ciudad,
-            descripcion,
-            imagen,
+            data['nombre'],
+            data['especie'],
+            data['edad'],
+            data['ciudad'],
+            data['descripcion'],
             id
         ))
 
         conn.commit()
 
-        # ==================================================
-        # EVENTO KAFKA
-        # ==================================================
-
-        mensaje = f"""
-        Mascota actualizada:
-        ID: {id}
-        Nombre: {nombre}
-        """
-
-        producer.produce(
-            'mascotas',
-            value=mensaje
-        )
-
-        producer.flush()
-
         cur.close()
         conn.close()
 
-        flash('Mascota actualizada correctamente')
+        return jsonify({
+            'success': True,
+            'mensaje': 'Mascota actualizada correctamente'
+        })
 
-        return redirect(url_for('index'))
+    except Exception as e:
 
-    # ======================================================
-    # OBTENER DATOS
-    # ======================================================
-
-    cur.execute("SELECT * FROM mascotas WHERE id=%s", (id,))
-
-    mascota = cur.fetchone()
-
-    cur.close()
-    conn.close()
-
-    return render_template('editar.html', mascota=mascota)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
 
 # ==========================================================
 # ELIMINAR MASCOTA
 # ==========================================================
 
-@app.route('/eliminar/<int:id>', methods=['POST'])
-def eliminar(id):
+@app.route('/mascotas/<int:id>', methods=['DELETE'])
+def eliminar_mascota(id):
 
     try:
 
@@ -326,29 +289,20 @@ def eliminar(id):
 
         conn.commit()
 
-        # ==================================================
-        # EVENTO KAFKA
-        # ==================================================
-
-        mensaje = f"Mascota eliminada con ID: {id}"
-
-        producer.produce(
-            'mascotas',
-            value=mensaje
-        )
-
-        producer.flush()
-
         cur.close()
         conn.close()
 
-        flash('Mascota eliminada correctamente', 'success')
+        return jsonify({
+            'success': True,
+            'mensaje': 'Mascota eliminada correctamente'
+        })
 
     except Exception as e:
 
-        flash(f"Error al eliminar mascota: {e}")
-
-    return redirect(url_for('index'))
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
 
 # ==========================================================
 # MAIN
@@ -356,7 +310,6 @@ def eliminar(id):
 
 if __name__ == '__main__':
 
-    # Crear carpeta uploads si no existe
     os.makedirs(upload_folder, exist_ok=True)
 
     app.run(debug=True)
