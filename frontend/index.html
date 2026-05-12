@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>API Adopta Mascotas</title>
+
+    <link rel="stylesheet" href="style.css">
+
+</head>
+<body>
+
+    <header>
+
+        <h1>🐾 API REST - Adopción de Mascotas</h1>
+
+    </header>
+
+    <!-- ============================= -->
+    <!-- TEST API -->
+    <!-- ============================= -->
+
+    <section class="card">
+
+        <h2>Estado API</h2>
+
+        <button onclick="testAPI()">
+            Probar API
+        </button>
+
+        <pre id="apiResponse"></pre>
+
+    </section>
+
+    <!-- ============================= -->
+    <!-- REGISTRAR -->
+    <!-- ============================= -->
+
+    <section class="card">
+
+        <h2>Registrar Mascota</h2>
+
+        <form id="formMascota">
+
+            <input type="text" id="nombre" placeholder="Nombre" required>
+
+            <input type="text" id="especie" placeholder="Especie" required>
+
+            <input type="number" id="edad" placeholder="Edad">
+
+            <input type="text" id="ciudad" placeholder="Ciudad">
+
+            <textarea id="descripcion" placeholder="Descripción"></textarea>
+
+            <input type="text" id="imagen" placeholder="URL Imagen">
+
+            <button type="submit">
+                Registrar
+            </button>
+
+        </form>
+
+    </section>
+
+    <!-- ============================= -->
+    <!-- BUSCAR -->
+    <!-- ============================= -->
+
+    <section class="card">
+
+        <h2>Buscar Mascota</h2>
+
+        <input type="number" id="buscarId" placeholder="ID">
+
+        <button onclick="buscarMascota()">
+            Buscar
+        </button>
+
+        <pre id="resultadoBusqueda"></pre>
+
+    </section>
+
+    <!-- ============================= -->
+    <!-- LISTADO -->
+    <!-- ============================= -->
+
+    <section>
+
+        <h2>Mascotas</h2>
+
+        <div id="mascotas" class="contenedor"></div>
+
+    </section>
+
+    <!-- ============================= -->
+    <!-- MODAL EDITAR -->
+    <!-- ============================= -->
+
+    <div id="modal" class="modal">
+
+        <div class="modal-content">
+
+            <h2>Editar Mascota</h2>
+
+            <input type="hidden" id="editId">
+
+            <input type="text" id="editNombre">
+
+            <input type="text" id="editEspecie">
+
+            <input type="number" id="editEdad">
+
+            <input type="text" id="editCiudad">
+
+            <textarea id="editDescripcion"></textarea>
+
+            <input type="text" id="editImagen">
+
+            <button onclick="guardarEdicion()">
+                Guardar
+            </button>
+
+            <button onclick="cerrarModal()">
+                Cancelar
+            </button>
+
+        </div>
+
+    </div>
+
+    <script src="app.js"></script>
+
+</body>
+</html>
