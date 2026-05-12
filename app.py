@@ -6,7 +6,6 @@
 from flask import Flask, request, jsonify
 import pymysql
 from dotenv import load_dotenv
-from werkzeug.utils import secure_filename
 import os
 
 # ==========================================================
@@ -20,11 +19,6 @@ load_dotenv()
 # ==========================================================
 
 app = Flask(__name__)
-
-upload_folder = 'static/uploads/'
-allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
-
-app.config['UPLOAD_FOLDER'] = upload_folder
 
 # ==========================================================
 # CONEXIÓN MYSQL CLOUD
@@ -44,21 +38,10 @@ def connect_db():
 
         port=int(os.getenv('MYSQL_PORT')),
 
-        ssl={
-            'ca': os.getenv('MYSQL_SSL_CA')
-        },
+        ssl_disabled=True,
 
         cursorclass=pymysql.cursors.DictCursor
     )
-
-# ==========================================================
-# VALIDAR IMÁGENES
-# ==========================================================
-
-def allowed_file(filename):
-
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
 # ==========================================================
 # RUTA PRINCIPAL
@@ -68,7 +51,25 @@ def allowed_file(filename):
 def inicio():
 
     return jsonify({
+        'success': True,
         'mensaje': 'API REST de adopción funcionando correctamente'
+    })
+
+# ==========================================================
+# TEST VARIABLES DE ENTORNO
+# ==========================================================
+
+@app.route('/test-env')
+def test_env():
+
+    return jsonify({
+
+        'MYSQL_HOST': os.getenv('MYSQL_HOST'),
+
+        'MYSQL_PORT': os.getenv('MYSQL_PORT'),
+
+        'MYSQL_DATABASE': os.getenv('MYSQL_DATABASE')
+
     })
 
 # ==========================================================
@@ -81,6 +82,7 @@ def obtener_mascotas():
     try:
 
         conn = connect_db()
+
         cur = conn.cursor()
 
         cur.execute("SELECT * FROM mascotas")
@@ -88,23 +90,31 @@ def obtener_mascotas():
         mascotas = cur.fetchall()
 
         cur.close()
+
         conn.close()
 
         return jsonify({
+
             'success': True,
+
             'total': len(mascotas),
+
             'data': mascotas
+
         })
 
     except Exception as e:
 
         return jsonify({
+
             'success': False,
+
             'error': str(e)
+
         })
 
 # ==========================================================
-# OBTENER UNA MASCOTA POR ID
+# OBTENER MASCOTA POR ID
 # ==========================================================
 
 @app.route('/mascotas/<int:id>', methods=['GET'])
@@ -113,35 +123,48 @@ def obtener_mascota(id):
     try:
 
         conn = connect_db()
+
         cur = conn.cursor()
 
         cur.execute(
+
             "SELECT * FROM mascotas WHERE id=%s",
+
             (id,)
         )
 
         mascota = cur.fetchone()
 
         cur.close()
+
         conn.close()
 
         if mascota:
 
             return jsonify({
+
                 'success': True,
+
                 'data': mascota
+
             })
 
         return jsonify({
+
             'success': False,
+
             'mensaje': 'Mascota no encontrada'
+
         })
 
     except Exception as e:
 
         return jsonify({
+
             'success': False,
+
             'error': str(e)
+
         })
 
 # ==========================================================
@@ -153,38 +176,10 @@ def registrar_mascota():
 
     try:
 
-        nombre = request.form.get('nombre')
-        especie = request.form.get('especie')
-        edad = request.form.get('edad')
-        ciudad = request.form.get('ciudad')
-        descripcion = request.form.get('descripcion')
-
-        imagen = None
-
-        # ==================================================
-        # SUBIR IMAGEN
-        # ==================================================
-
-        file = request.files.get('imagen')
-
-        if file and allowed_file(file.filename):
-
-            filename = secure_filename(file.filename)
-
-            filepath = os.path.join(
-                app.config['UPLOAD_FOLDER'],
-                filename
-            )
-
-            file.save(filepath)
-
-            imagen = f"uploads/{filename}"
-
-        # ==================================================
-        # INSERT MYSQL
-        # ==================================================
+        data = request.json
 
         conn = connect_db()
+
         cur = conn.cursor()
 
         sql = """
@@ -194,12 +189,19 @@ def registrar_mascota():
         """
 
         cur.execute(sql, (
-            nombre,
-            especie,
-            edad,
-            ciudad,
-            descripcion,
-            imagen
+
+            data.get('nombre'),
+
+            data.get('especie'),
+
+            data.get('edad'),
+
+            data.get('ciudad'),
+
+            data.get('descripcion'),
+
+            data.get('imagen')
+
         ))
 
         conn.commit()
@@ -207,19 +209,27 @@ def registrar_mascota():
         nuevo_id = cur.lastrowid
 
         cur.close()
+
         conn.close()
 
         return jsonify({
+
             'success': True,
+
             'mensaje': 'Mascota registrada correctamente',
+
             'id': nuevo_id
+
         })
 
     except Exception as e:
 
         return jsonify({
+
             'success': False,
+
             'error': str(e)
+
         })
 
 # ==========================================================
@@ -234,40 +244,62 @@ def actualizar_mascota(id):
         data = request.json
 
         conn = connect_db()
+
         cur = conn.cursor()
 
         cur.execute("""
+
             UPDATE mascotas
+
             SET nombre=%s,
                 especie=%s,
                 edad=%s,
                 ciudad=%s,
-                descripcion=%s
+                descripcion=%s,
+                imagen=%s
+
             WHERE id=%s
+
         """, (
-            data['nombre'],
-            data['especie'],
-            data['edad'],
-            data['ciudad'],
-            data['descripcion'],
+
+            data.get('nombre'),
+
+            data.get('especie'),
+
+            data.get('edad'),
+
+            data.get('ciudad'),
+
+            data.get('descripcion'),
+
+            data.get('imagen'),
+
             id
+
         ))
 
         conn.commit()
 
         cur.close()
+
         conn.close()
 
         return jsonify({
+
             'success': True,
+
             'mensaje': 'Mascota actualizada correctamente'
+
         })
 
     except Exception as e:
 
         return jsonify({
+
             'success': False,
+
             'error': str(e)
+
         })
 
 # ==========================================================
@@ -280,28 +312,38 @@ def eliminar_mascota(id):
     try:
 
         conn = connect_db()
+
         cur = conn.cursor()
 
         cur.execute(
+
             "DELETE FROM mascotas WHERE id=%s",
+
             (id,)
         )
 
         conn.commit()
 
         cur.close()
+
         conn.close()
 
         return jsonify({
+
             'success': True,
+
             'mensaje': 'Mascota eliminada correctamente'
+
         })
 
     except Exception as e:
 
         return jsonify({
+
             'success': False,
+
             'error': str(e)
+
         })
 
 # ==========================================================
@@ -309,7 +351,5 @@ def eliminar_mascota(id):
 # ==========================================================
 
 if __name__ == '__main__':
-
-    os.makedirs(upload_folder, exist_ok=True)
 
     app.run(debug=True)
